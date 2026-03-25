@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบข้อมูลเกษตรกร</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-image: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1920&q=80');
+            background-size: cover; background-position: center; background-attachment: fixed;
+        }
+        .overlay { background-color: rgba(240, 253, 244, 0.9); min-height: 100vh; }
+    </style>
+</head>
+<body class="p-0">
+    <div class="overlay p-5">
+        <div class="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-2xl border-t-8 border-green-600 mb-10">
+            <h1 class="text-3xl font-bold text-green-700 mb-6 text-center text-stroke">🌿 บันทึกข้อมูลการขาย</h1>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-green-50 p-4 rounded-xl">
+                <div><label class="block text-sm font-medium">ชื่อ-สกุล</label><input type="text" id="userName" class="w-full border p-2 rounded-lg outline-none focus:ring-2 focus:ring-green-500"></div>
+                <div><label class="block text-sm font-medium">เบอร์โทร</label><input type="text" id="userPhone" class="w-full border p-2 rounded-lg outline-none focus:ring-2 focus:ring-green-500"></div>
+                <div class="md:col-span-2"><label class="block text-sm font-medium">ที่อยู่</label><input type="text" id="userAddress" class="w-full border p-2 rounded-lg outline-none focus:ring-2 focus:ring-green-500"></div>
+                <div><label class="block text-sm font-medium">เนื้อที่ (ไร่)</label><input type="number" id="userArea" class="w-full border p-2 rounded-lg"></div>
+                <div><label class="block text-sm font-medium">วันที่ขาย</label><input type="date" id="saleDate" class="w-full border p-2 rounded-lg"></div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium">เลือกเดือน</label>
+                    <select id="saleMonth" class="w-full border p-2 rounded-lg">
+                        <option>มกราคม</option><option>กุมภาพันธ์</option><option>มีนาคม</option><option>เมษายน</option><option>พฤษภาคม</option><option>มิถุนายน</option><option>กรกฎาคม</option><option>สิงหาคม</option><option>กันยายน</option><option>ตุลาคม</option><option>พฤศจิกายน</option><option>ธันวาคม</option>
+                    </select>
+                </div>
+            </div>
+
+            <table class="w-full mb-4 border-collapse overflow-hidden rounded-lg shadow-sm">
+                <thead><tr class="bg-green-600 text-white text-sm"><th class="p-2 text-left">สินค้า</th><th class="p-2" width="80">จำนวน</th><th class="p-2" width="100">ราคา</th><th class="p-2 text-right">รวม</th><th class="p-2">ลบ</th></tr></thead>
+                <tbody id="salesBody">
+                    <tr class="border-b"><td class="p-1"><input type="text" class="item-name w-full border-none p-1"></td><td class="p-1"><input type="number" class="item-qty w-full border-none p-1 text-center" oninput="calc(this)" value="0"></td><td class="p-1"><input type="number" class="item-price w-full border-none p-1 text-center" oninput="calc(this)" value="0"></td><td class="p-1 text-right font-bold text-green-700 item-total">0</td><td class="p-1 text-center"><button onclick="deleteRow(this)" class="text-red-400">✕</button></td></tr>
+                </tbody>
+            </table>
+            <button onclick="addRow()" class="w-full border-2 border-dashed border-green-500 text-green-600 py-2 rounded-lg mb-4 hover:bg-green-50">+ เพิ่มสินค้า</button>
+            <button onclick="submitData()" id="btnSubmit" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold text-xl shadow-lg hover:bg-green-700 transition">🚀 บันทึกข้อมูล</button>
+        </div>
+
+        <div class="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-2xl border-t-8 border-blue-500">
+            <h2 class="text-2xl font-bold text-blue-700 mb-6 text-center">📊 กราฟสรุปรายได้แยกตามชนิดผัก</h2>
+            <div class="flex justify-center gap-3 mb-6">
+                <select id="filterMonth" class="border p-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-400">
+                    <option value="">-- เลือกเดือน --</option>
+                    <option>มกราคม</option><option>กุมภาพันธ์</option><option>มีนาคม</option><option>เมษายน</option><option>พฤษภาคม</option><option>มิถุนายน</option><option>กรกฎาคม</option><option>สิงหาคม</option><option>กันยายน</option><option>ตุลาคม</option><option>พฤศจิกายน</option><option>ธันวาคม</option>
+                </select>
+                <button onclick="loadReport()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition">ดูรายงาน</button>
+            </div>
+            <div style="height:400px;"><canvas id="salesChart"></canvas></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzc1cdf7QbTxZhlPLL_I8js20ODxq54lU_9wQOQUvWBapxCHrEVkdNpH6cL5m4VrARuwQ/exec';
+        let myChart = null;
+
+        function addRow() {
+            const row = `<tr class="border-b"><td class="p-1"><input type="text" class="item-name w-full border-none p-1"></td><td class="p-1"><input type="number" class="item-qty w-full border-none p-1 text-center" oninput="calc(this)" value="0"></td><td class="p-1"><input type="number" class="item-price w-full border-none p-1 text-center" oninput="calc(this)" value="0"></td><td class="p-1 text-right font-bold text-green-700 item-total">0</td><td class="p-1 text-center"><button onclick="deleteRow(this)" class="text-red-400">✕</button></td></tr>`;
+            document.getElementById('salesBody').insertAdjacentHTML('beforeend', row);
+        }
+
+        function deleteRow(btn) { if(document.querySelectorAll('#salesBody tr').length > 1) btn.closest('tr').remove(); }
+
+        function calc(input) {
+            const row = input.closest('tr');
+            const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+            const price = parseFloat(row.querySelector('.item-price').value) || 0;
+            row.querySelector('.item-total').innerText = (qty * price).toLocaleString();
+        }
+
+        async function submitData() {
+            const btn = document.getElementById('btnSubmit');
+            btn.disabled = true; btn.innerText = 'กำลังบันทึก...';
+            const sales = [];
+            document.querySelectorAll('#salesBody tr').forEach(row => {
+                const name = row.querySelector('.item-name').value;
+                const qty = row.querySelector('.item-qty').value;
+                const price = row.querySelector('.item-price').value;
+                if(name && qty > 0) sales.push({ itemName: name, qty: qty, price: price, total: qty * price });
+            });
+            const payload = {
+                name: document.getElementById('userName').value, phone: document.getElementById('userPhone').value,
+                address: document.getElementById('userAddress').value, area: document.getElementById('userArea').value,
+                date: document.getElementById('saleDate').value, month: document.getElementById('saleMonth').value, sales: sales
+            };
+            try {
+                await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+                alert('บันทึกสำเร็จ!'); location.reload();
+            } catch (e) { alert('ผิดพลาด! เช็ก URL นะคะ'); }
+            finally { btn.disabled = false; btn.innerText = 'บันทึกข้อมูล'; }
+        }
+
+        async function loadReport() {
+            const selMonth = document.getElementById('filterMonth').value;
+            if(!selMonth) return alert('เลือกเดือนก่อนนะงับ');
+            const res = await fetch(API_URL);
+            const data = await res.json();
+            const summary = {};
+            for(let i=1; i<data.length; i++){
+                if(data[i][5] === selMonth) summary[data[i][6]] = (summary[data[i][6]] || 0) + parseFloat(data[i][9]);
+            }
+            const labels = Object.keys(summary);
+            const values = Object.values(summary);
+            if(labels.length === 0) return alert('ไม่พบข้อมูลของเดือนนี้ค่ะ');
+            renderChart(labels, values, selMonth);
+        }
+
+        function renderChart(labels, values, month) {
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            if(myChart) myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: labels, datasets: [{ label: 'ยอดรวม (บาท)', data: values, backgroundColor: '#10b981' }] },
+                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+            });
+        }
+    </script>
+</body>
+</html>
